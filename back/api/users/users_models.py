@@ -16,9 +16,17 @@ class User(db.Model):
         return f'<User {self.email!r}>'
     
     def to_dict(self):
+        # D5: public representation. Never expose the e-mail (nor the password
+        # hash) in API responses that are not tied to the authenticated user.
         return {
             "id": self.id,
             "name": self.name,
+        }
+
+    def to_private_dict(self):
+        # Only for the authenticated user's own endpoints (e.g. /users/me).
+        return {
+            **self.to_dict(),
             "email": self.email,
         }
 

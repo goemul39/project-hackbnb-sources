@@ -12,4 +12,4 @@ def get_current_user_details():
     if not user:
         return {'error': 'User not found'}, 404
 
-    return jsonify(user.to_dict())
+    return jsonify(user.to_private_dict())

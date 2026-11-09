@@ -73,5 +73,13 @@ class P3FixesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()["success"])
 
+    def test_d5_rooms_api_does_not_leak_host_email(self):
+        response = self.client.get("/rooms/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload)
+        for room in payload:
+            self.assertNotIn("email", room.get("host", {}))
+
 if __name__ == "__main__":
     unittest.main()
