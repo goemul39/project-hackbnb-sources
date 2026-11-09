@@ -34,3 +34,14 @@ def get_checkout_lines(checkout_session_id):
     session = requests.Session()
     session.auth = (os.getenv('STRIPE_API_KEY'), "")
     return session.get(url).json()["data"]
+
+
+def is_checkout_paid(checkout_session_id):
+    """Ask Stripe if the checkout session is paid (False if the call fails)."""
+    stripe.api_key = os.getenv('STRIPE_API_KEY')
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+    except Exception:
+        return False
+
+    return checkout_session.get("payment_status") == "paid"

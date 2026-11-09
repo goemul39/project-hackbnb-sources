@@ -1,13 +1,12 @@
-import time
-import hashlib
+import hmac
+import secrets
 import string
-import random
 from datetime import date
 from flask import jsonify, Blueprint, request
 
 from database.init import db
 from api.rooms.rooms_models import Room
-from services.stripe import create_checkout, get_checkout_lines
+from services.stripe import create_checkout, get_checkout_lines, is_checkout_paid
 from .bookings_models import Booking
 from sqlalchemy.orm import joinedload
 
@@ -87,12 +86,12 @@ def new_booking():
     # Determine the booking total price
     booking_price = room.price * booking_duration_in_days
 
-    # Generate random booking reference
-    booking_reference = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    # Generate a random booking reference
+    booking_reference = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
-    # Generate random confirmation secret
-    random_string = str(int(time.time())) # get current timestamp in seconds
-    checkout_confirmation_secret = hashlib.sha512(random_string.encode('utf-8')).hexdigest() # hash it with safe sha512
+    # D4: the old secret was based on the timestamp, so it was easy to guess.
+    # Use a random secret instead.
+    checkout_confirmation_secret = secrets.token_urlsafe(32)
 
     # Create Stripe checkout session
     checkout_session = create_checkout(
@@ -134,9 +133,19 @@ def confirm_booking_checkout(reference: str):
     booking = Booking.query.filter_by(reference=reference).first()
     if not booking:
         return {'error': 'Booking not found'}, 404
-    
-    if booking.checkout_confirmation_secret != request.json["confirmationSecret"]:
+
+    payload = request.get_json(silent=True) or {}
+    confirmation_secret = payload.get("confirmationSecret")
+    if not isinstance(confirmation_secret, str):
+        return {'error': 'Missing confirmation secret'}, 400
+
+    # D4: compare the secret in constant time
+    if not hmac.compare_digest(booking.checkout_confirmation_secret, confirmation_secret):
         return {'error': 'Invalid confirmation secret'}, 422
+
+    # D4: also check with Stripe that the payment is really done
+    if not booking.is_paid and not is_checkout_paid(booking.stripe_checkout_session_id):
+        return {'error': 'Payment not completed'}, 402
 
     booking.is_paid = True
     db.session.commit()
