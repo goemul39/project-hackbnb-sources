@@ -1,5 +1,6 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 from database.init import db
 from database.seed import seed_database
 
@@ -15,6 +16,10 @@ from api.uploads.uploads_api import uploads_api
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
+
+# D8: never run with the Werkzeug debugger, and never leak stack traces.
+app.config['DEBUG'] = False
+app.config['PROPAGATE_EXCEPTIONS'] = False
 
 # Add CORS to all requests
 CORS(app, origins=app.config["CORS_ORIGINS"])
@@ -38,9 +43,24 @@ def welcome():
    return "Welcome on API"
 
 
+# D8: generic error pages, no traceback / source code / environment leak.
+@app.errorhandler(500)
+def handle_internal_error(_error):
+   db.session.rollback()
+   return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+   if isinstance(error, HTTPException):
+      return error
+   db.session.rollback()
+   return jsonify({'error': 'Internal server error'}), 500
+
+
 if __name__ == '__main__':
    app.run(
-      debug=True,
+      debug=False,
       host="0.0.0.0",
       port=9001,
    )
