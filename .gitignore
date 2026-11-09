@@ -1,0 +1,14 @@
+# Secrets et fichiers locaux
+.env
+.env.*
+!.env.example
+
+# Base SQLite locale
+instance/
+*.sqlite
+*.sqlite3
+
+# Divers
+.DS_Store
+__pycache__/
+*.pyc
