@@ -1,6 +1,9 @@
 import os
+import re
 import stripe
 import requests
+
+STRIPE_SESSION_ID = re.compile(r"cs_(test|live)_[A-Za-z0-9]+")
 
 def create_checkout(reference, name, unit_price, quantity, confirmation_secret):
     """
@@ -29,6 +32,9 @@ def create_checkout(reference, name, unit_price, quantity, confirmation_secret):
     )
 
 def get_checkout_lines(checkout_session_id):
+    if not STRIPE_SESSION_ID.fullmatch(checkout_session_id or ""):
+        raise ValueError("Invalid checkout session ID")
+
     url = f"https://api.stripe.com/v1/checkout/sessions/{checkout_session_id}/line_items"
 
     session = requests.Session()
