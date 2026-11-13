@@ -5,8 +5,6 @@ from database.init import db
 
 rooms_api = Blueprint('rooms', __name__)
 
-ALLOWED_CATEGORIES = {"swimming-pool", "ski", "seaside", "city", "hut", "loft"}
-
 
 @rooms_api.route('/', methods=['GET'])
 def list_rooms():
@@ -16,8 +14,6 @@ def list_rooms():
 
    if "category" in request.args:
       category = request.args["category"]
-      if category not in ALLOWED_CATEGORIES:
-         return {'error': 'Invalid category'}, 400
       rooms = Room.query.filter(Room.category == category).all()
    else:
       rooms = Room.query.all()

@@ -11,7 +11,7 @@ class D1SqlInjectionTestCase(unittest.TestCase):
         app.config.update(TESTING=True)
         self.client = app.test_client()
 
-    def test_sqli_in_category_is_rejected(self):
+    def test_sqli_in_category_returns_no_room(self):
         payloads = [
             "hut' OR 1=1 -- ",
             "test' UNION SELECT bookings.id, bookings.reference, "
@@ -20,12 +20,21 @@ class D1SqlInjectionTestCase(unittest.TestCase):
         ]
         for payload in payloads:
             response = self.client.get("/rooms/", query_string={"category": payload})
-            self.assertEqual(response.status_code, 400)
+            # The payload is treated as plain text: no room has this category
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json(), [])
 
     def test_valid_category_still_works(self):
         response = self.client.get("/rooms/", query_string={"category": "hut"})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(all(room["category"] == "hut" for room in response.get_json()))
+
+    def test_front_categories_without_rooms_return_empty_list(self):
+        # "camping" and "desert" are filter buttons in the front but have no room
+        for category in ["camping", "desert"]:
+            response = self.client.get("/rooms/", query_string={"category": category})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json(), [])
 
 
 if __name__ == "__main__":
