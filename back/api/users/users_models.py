@@ -16,9 +16,16 @@ class User(db.Model):
         return f'<User {self.email!r}>'
     
     def to_dict(self):
+        # D5: public data, no email here
         return {
             "id": self.id,
             "name": self.name,
+        }
+
+    def to_private_dict(self):
+        # private data, only for /users/me
+        return {
+            **self.to_dict(),
             "email": self.email,
         }
 
