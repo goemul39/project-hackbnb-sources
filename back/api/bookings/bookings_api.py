@@ -140,7 +140,11 @@ def confirm_booking_checkout(reference: str):
         return {'error': 'Missing confirmation secret'}, 400
 
     # D4: compare the secret in constant time
-    if not hmac.compare_digest(booking.checkout_confirmation_secret, confirmation_secret):
+    # Compare bytes: compare_digest refuses non-ASCII str and would crash
+    if not hmac.compare_digest(
+        booking.checkout_confirmation_secret.encode(),
+        confirmation_secret.encode(),
+    ):
         return {'error': 'Invalid confirmation secret'}, 422
 
     # D4: also check with Stripe that the payment is really done

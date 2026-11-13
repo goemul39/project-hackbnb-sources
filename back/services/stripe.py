@@ -37,11 +37,11 @@ def get_checkout_lines(checkout_session_id):
 
 
 def is_checkout_paid(checkout_session_id):
-    """Ask Stripe if the checkout session is paid (False if the call fails)."""
+    """Ask Stripe if the checkout session is paid (False if anything fails)."""
     stripe.api_key = os.getenv('STRIPE_API_KEY')
     try:
         checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+        # StripeObject is not a dict in recent stripe versions: no .get()
+        return checkout_session.payment_status == "paid"
     except Exception:
         return False
-
-    return checkout_session.get("payment_status") == "paid"

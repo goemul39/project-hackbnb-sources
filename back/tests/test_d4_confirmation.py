@@ -68,6 +68,39 @@ class D4ConfirmationTestCase(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()["success"])
+    def test_d4_non_ascii_secret_is_rejected_cleanly(self):
+        booking = self._create_booking()
+        response = self.client.post(
+            f"/bookings/{booking['reference']}/confirm-checkout",
+            json={"confirmationSecret": "é"},
+        )
+        self.assertEqual(response.status_code, 422)
+
+
+class D4IsCheckoutPaidTestCase(unittest.TestCase):
+    """Run the real is_checkout_paid with a fake Stripe response."""
+
+    def _session(self, payment_status):
+        import stripe
+        return stripe.checkout.Session.construct_from(
+            {"id": "cs_test_fake_session", "payment_status": payment_status}, "sk_test"
+        )
+
+    def test_paid_session(self):
+        from services.stripe import is_checkout_paid
+        with patch("stripe.checkout.Session.retrieve", return_value=self._session("paid")):
+            self.assertTrue(is_checkout_paid("cs_test_fake_session"))
+
+    def test_unpaid_session(self):
+        from services.stripe import is_checkout_paid
+        with patch("stripe.checkout.Session.retrieve", return_value=self._session("unpaid")):
+            self.assertFalse(is_checkout_paid("cs_test_fake_session"))
+
+    def test_stripe_error(self):
+        from services.stripe import is_checkout_paid
+        with patch("stripe.checkout.Session.retrieve", side_effect=Exception("down")):
+            self.assertFalse(is_checkout_paid("cs_test_fake_session"))
+
 
 if __name__ == "__main__":
     unittest.main()
