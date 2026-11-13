@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -17,8 +18,9 @@ from api.uploads.uploads_api import uploads_api
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
 
-# D8: no debug in prod, it leaks stack traces
-app.config['DEBUG'] = False
+# D8: no debug in prod, it leaks stack traces.
+# Debug (auto-reload) only when FLASK_DEBUG=1, set in docker-compose.yml for dev.
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG') == '1'
 app.config['PROPAGATE_EXCEPTIONS'] = False
 
 # Add CORS to all requests
@@ -62,7 +64,7 @@ def handle_unexpected_error(error):
 
 if __name__ == '__main__':
    app.run(
-      debug=False,
+      debug=app.config['DEBUG'],
       host="0.0.0.0",
       port=9001,
    )
