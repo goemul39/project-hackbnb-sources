@@ -1,5 +1,7 @@
-from flask import Flask
+import os
+from flask import Flask, jsonify
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 from database.init import db
 from database.seed import seed_database
 
@@ -15,6 +17,11 @@ from api.uploads.uploads_api import uploads_api
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
+
+# D8: no debug in prod, it leaks stack traces.
+# Debug (auto-reload) only when FLASK_DEBUG=1, set in docker-compose.yml for dev.
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG') == '1'
+app.config['PROPAGATE_EXCEPTIONS'] = False
 
 # Add CORS to all requests
 CORS(app, origins=app.config["CORS_ORIGINS"])
@@ -38,9 +45,26 @@ def welcome():
    return "Welcome on API"
 
 
+# D8: return a generic error instead of the traceback
+@app.errorhandler(500)
+def handle_internal_error(_error):
+   db.session.rollback()
+   return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+   if isinstance(error, HTTPException):
+      return error
+   # Hide details from the user, but keep them in the server logs
+   app.logger.exception(error)
+   db.session.rollback()
+   return jsonify({'error': 'Internal server error'}), 500
+
+
 if __name__ == '__main__':
    app.run(
-      debug=True,
+      debug=app.config['DEBUG'],
       host="0.0.0.0",
       port=9001,
    )
