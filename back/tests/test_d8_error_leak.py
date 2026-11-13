@@ -24,6 +24,14 @@ class D8ErrorLeakTestCase(unittest.TestCase):
         self.assertNotIn("Traceback", body)
         self.assertNotIn("boom secret detail", body)
 
+    def test_internal_errors_are_logged(self):
+        with patch("api.rooms.rooms_api.Room") as fake_room:
+            fake_room.query.all.side_effect = RuntimeError("boom secret detail")
+            with self.assertLogs(app.logger, level="ERROR") as logs:
+                self.client.get("/rooms/")
+
+        self.assertIn("boom secret detail", "\n".join(logs.output))
+
 
 if __name__ == "__main__":
     unittest.main()

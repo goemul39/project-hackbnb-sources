@@ -54,6 +54,8 @@ def handle_internal_error(_error):
 def handle_unexpected_error(error):
    if isinstance(error, HTTPException):
       return error
+   # Hide details from the user, but keep them in the server logs
+   app.logger.exception(error)
    db.session.rollback()
    return jsonify({'error': 'Internal server error'}), 500
 
